@@ -84,7 +84,19 @@ class Transpiler:
 
         if "split" in f:
             splits = f["split"]
-            train_pct = splits.get("train", 100) / 100.0
+            # Accept both plain keys (train/val/test) and the v1.0-style
+            # named-split keys (train_sft/val_sft/…): pick the first train-ish
+            # and first val-ish key instead of requiring an exact "train".
+            train_key = None
+            val_key = None
+            for k in splits:
+                if k == "train" or k.startswith("train_"):
+                    train_key = train_key or k
+                elif k == "val" or k == "test" or k.startswith("val_") or k.startswith("test_"):
+                    val_key = val_key or k
+            if train_key is None:
+                train_key = list(splits)[0]
+            train_pct = splits[train_key] / 100.0
             lines.append(f"{indent}_split = raw_dataset.train_test_split(train_size={train_pct})")
             lines.append(f"{indent}train_dataset = _split['train']")
             lines.append(f"{indent}eval_dataset = _split['test']")
